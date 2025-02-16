@@ -1,6 +1,6 @@
 import unittest
-from src.paperwings import rn_numpy
-from src.paperwings import encoding_decoding
+
+from src.paperwings import encoding_decoding, rn_numpy
 
 
 class TestResonatorNetwork(unittest.TestCase):
@@ -13,17 +13,21 @@ class TestResonatorNetwork(unittest.TestCase):
     def test_resonator_network(self):
         for _ in range(self.num_trials):
             the_codebooks = encoding_decoding.generate_codebooks(
-                self.factor_labels, self.num_neurons, {x: self.cbook_size for x in self.factor_labels}
+                self.factor_labels,
+                self.num_neurons,
+                {x: self.cbook_size for x in self.factor_labels},
             )
-            composite_query, gt_vecs, gt_cbook_indexes = encoding_decoding.generate_c_query(
-                the_codebooks
+            composite_query, gt_vecs, gt_cbook_indexes = (
+                encoding_decoding.generate_c_query(the_codebooks)
             )
             decoded_factors, _, _ = rn_numpy.run(
                 composite_query,
                 the_codebooks,
             )
             best_guesses = encoding_decoding.best_guess(decoded_factors, the_codebooks)
-            accuracy = encoding_decoding.calculate_accuracy(best_guesses, gt_cbook_indexes)
+            accuracy = encoding_decoding.calculate_accuracy(
+                best_guesses, gt_cbook_indexes
+            )
 
             print("The best guess based on the final state of the model is:")
             print(best_guesses)
@@ -36,5 +40,5 @@ class TestResonatorNetwork(unittest.TestCase):
             self.assertLessEqual(accuracy, 1.0)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()

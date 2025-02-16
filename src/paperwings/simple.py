@@ -2,8 +2,7 @@
 Simple demo of simulating a Resonator Network
 """
 
-from src.paperwings import rn_numpy
-from src.paperwings import encoding_decoding
+from src.paperwings import encoding_decoding, rn_numpy
 
 factor_labels = ["Factor1", "Factor2", "Factor3"]
 num_neurons = 1000

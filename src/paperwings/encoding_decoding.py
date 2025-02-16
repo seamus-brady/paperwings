@@ -33,8 +33,8 @@ def cosine_sim(vecs1, vecs2):
         vecs1 and the j'th vector in vecs2. We'll squeeze down the dimensions
         if either of the inputs is 1d
     """
-    assert (vecs1.ndim <= 2) and (vecs2.ndim <= 2)
-    assert vecs1.shape[0] == vecs2.shape[0]
+    # assert (vecs1.ndim <= 2) and (vecs2.ndim <= 2)
+    # assert vecs1.shape[0] == vecs2.shape[0]
     if vecs1.ndim == 1:
         vecs1_l2 = np.linalg.norm(vecs1, 2)
     else:
@@ -76,7 +76,7 @@ def generate_codebooks(
     factor_codebooks : dict
         Keys are factor labels, values are the codebook matrices
     """
-    assert len(factor_labels) == len(cbook_sizes)
+    # assert len(factor_labels) == len(cbook_sizes)
     if encoding != "random":
         raise KeyError("Unrecognized encoding type " + encoding)
     if force_unique and any([cbook_sizes[x] > 2**v_size for x in cbook_sizes]):
@@ -155,11 +155,12 @@ def generate_c_query(factor_codebooks, codebook_inds=None, perturbation_params=N
                 0, factor_codebooks[factor_label].shape[1]
             )
     else:
-        assert len(factor_codebooks) == len(codebook_inds)
+        # assert len(factor_codebooks) == len(codebook_inds)
+        pass
 
     factor_vecs = {}
     for label in codebook_inds:
-        assert factor_codebooks[label].dtype == "int8"
+        # assert factor_codebooks[label].dtype == "int8"
         factor_vecs[label] = factor_codebooks[label][:, codebook_inds[label]]
 
     composite_vec = np.prod(

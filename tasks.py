@@ -13,7 +13,7 @@
 
 from invoke import task
 
-SRC_ROOT = "./resonator_networks/"
+SRC_ROOT = "./src/"
 
 
 @task

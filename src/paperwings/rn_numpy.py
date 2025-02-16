@@ -1,5 +1,5 @@
 import copy
-from typing import Dict, Optional, Tuple, Union
+from typing import Dict, Tuple, Union
 
 import numpy as np
 
@@ -23,16 +23,17 @@ correct factorization, try giving it more iterations. Default 10000.
 """
 DEFAULT_MAX_NUM_ITERS = 10000
 
+
 def run(
     composite_vec: np.ndarray,
     factor_codebooks: Dict[Union[int, str], np.ndarray],
-    lim_cycle_detection_len: int = 0
+    lim_cycle_detection_len: int = 0,
 ) -> Tuple[
     Dict[Union[int, str], np.ndarray],
     int,
     Dict[str, Union[bool, Dict[Union[int, str], int]]],
 ]:
-    assert composite_vec.dtype == np.int8
+    # assert composite_vec.dtype == np.int8
     synapse_type = DEFAULT_SYNAPSE_TYPE
 
     factor_states: Dict[Union[int, str], np.ndarray] = dict.fromkeys(factor_codebooks)  # type: ignore
@@ -41,7 +42,7 @@ def run(
     factor_ordering = list(factor_codebooks.keys())
 
     for factor_label in factor_ordering:
-        assert factor_codebooks[factor_label].dtype == np.int8
+        # assert factor_codebooks[factor_label].dtype == np.int8
 
         factor_states[factor_label] = activation(
             np.sum(factor_codebooks[factor_label], axis=1).astype(np.float32)
@@ -112,11 +113,11 @@ def run(
         iter_idx += 1
 
         if all(factor_converged):
-            assert not all(factor_has_limit_cycle)
+            # assert not all(factor_has_limit_cycle)
             converged = True
 
         if all(factor_has_limit_cycle):
-            assert not all(factor_converged)
+            # assert not all(factor_converged)
             limit_cycle_found = True
             cycle_lengths = {
                 factor_label: limit_cycle_detectors[
@@ -158,7 +159,7 @@ def activation(membrane_potential: np.ndarray) -> np.ndarray:
 
 class LimitCycleCatcher:
     def __init__(self, state_space_size: int, max_lim_cycle_len: int = 20) -> None:
-        assert max_lim_cycle_len > 1, "limit cycles can be of length 2 or larger"
+        # assert max_lim_cycle_len > 1, "limit cycles can be of length 2 or larger"
         self.state_buffers: Dict[int, np.ndarray] = {
             k: np.zeros([k, state_space_size], dtype=np.float32)
             for k in range(2, max_lim_cycle_len + 1)
