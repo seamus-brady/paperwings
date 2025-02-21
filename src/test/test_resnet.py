@@ -1,6 +1,9 @@
 import unittest
 
-from src.paperwings import encoding_decoding, rn_numpy
+import numpy as np
+
+from src.paperwings.resonator_network.encoder_decoder import EncoderDecoder
+from src.paperwings.resonator_network.resonator_network import ResonatorNetwork
 
 
 class TestResonatorNetwork(unittest.TestCase):
@@ -9,25 +12,24 @@ class TestResonatorNetwork(unittest.TestCase):
         self.num_neurons = 1000
         self.cbook_size = 50
         self.num_trials = 5
+        self.resonator_network = ResonatorNetwork()
 
-    def test_resonator_network(self):
+    def test_resonator_network_run(self):
         for _ in range(self.num_trials):
-            the_codebooks = encoding_decoding.generate_codebooks(
+            the_codebooks = EncoderDecoder.generate_codebooks(
                 self.factor_labels,
                 self.num_neurons,
                 {x: self.cbook_size for x in self.factor_labels},
             )
             composite_query, gt_vecs, gt_cbook_indexes = (
-                encoding_decoding.generate_c_query(the_codebooks)
+                EncoderDecoder.generate_c_query(the_codebooks)
             )
-            decoded_factors, _, _ = rn_numpy.run(
+            decoded_factors, _, _ = self.resonator_network.run(
                 composite_query,
                 the_codebooks,
             )
-            best_guesses = encoding_decoding.best_guess(decoded_factors, the_codebooks)
-            accuracy = encoding_decoding.calculate_accuracy(
-                best_guesses, gt_cbook_indexes
-            )
+            best_guesses = EncoderDecoder.best_guess(decoded_factors, the_codebooks)
+            accuracy = EncoderDecoder.calculate_accuracy(best_guesses, gt_cbook_indexes)
 
             print("The best guess based on the final state of the model is:")
             print(best_guesses)
@@ -38,6 +40,45 @@ class TestResonatorNetwork(unittest.TestCase):
 
             self.assertGreaterEqual(accuracy, 0.0)
             self.assertLessEqual(accuracy, 1.0)
+
+    def test_resonator_network_accuracy(self):
+        the_codebooks = EncoderDecoder.generate_codebooks(
+            self.factor_labels,
+            self.num_neurons,
+            {x: self.cbook_size for x in self.factor_labels},
+        )
+        composite_query, gt_vecs, gt_cbook_indexes = EncoderDecoder.generate_c_query(
+            the_codebooks
+        )
+        decoded_factors, _, _ = self.resonator_network.run(
+            composite_query,
+            the_codebooks,
+        )
+        best_guesses = EncoderDecoder.best_guess(decoded_factors, the_codebooks)
+        accuracy = EncoderDecoder.calculate_accuracy(best_guesses, gt_cbook_indexes)
+
+        self.assertGreaterEqual(accuracy, 0.0)
+        self.assertLessEqual(accuracy, 1.0)
+
+    def test_resonator_network_similarity(self):
+        the_codebooks = EncoderDecoder.generate_codebooks(
+            self.factor_labels,
+            self.num_neurons,
+            {x: self.cbook_size for x in self.factor_labels},
+        )
+        composite_query, gt_vecs, gt_cbook_indexes = EncoderDecoder.generate_c_query(
+            the_codebooks
+        )
+        decoded_factors, _, _ = self.resonator_network.run(
+            composite_query,
+            the_codebooks,
+        )
+        similarities = EncoderDecoder.sim_to_target(decoded_factors, gt_vecs)
+
+        for factor_label in self.factor_labels:
+            self.assertIn(factor_label, similarities)
+            self.assertTrue(np.all(similarities[factor_label] >= -1.0))
+            self.assertTrue(np.all(similarities[factor_label] <= 1.0))
 
 
 if __name__ == "__main__":
