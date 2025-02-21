@@ -25,6 +25,10 @@ class FilePathUtil:
         return script_path.parent.parent.parent.parent.absolute().__str__()
 
     @staticmethod
+    def storage_path() -> str:
+        return FilePathUtil.append_path_to_repo_path("storage/")
+
+    @staticmethod
     def append_path_to_app_path(path_str: str) -> str:
         app_root: str = FilePathUtil.app_root_path()
         return os.path.join(app_root, path_str)
