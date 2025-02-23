@@ -70,6 +70,19 @@ class ResonatorNetwork:
         int,
         Dict[str, Union[bool, Dict[Union[int, str], int]]],
     ]:
+        """
+        Factors composite_vec based on the vectors in factor_codebooks
+
+        Parameters
+        ----------
+        composite_vec : ndarray(int8, size=(N,))
+          The N-dimensional vector that we would like to factor
+        factor_codebooks : dictionary
+          Keys index the label of the factor (could be 0, 1, 2, ... or 'color',
+          'shape' etc.) with the dictionary values being matrices whose columns
+          are the codebook vectors for that factor.
+        lim_cycle_detection_len: length of the limit cycle to detect
+        """
         try:
             self.LOGGER.debug("Running Resonator Network")
             factor_states: Dict[Union[int, str], np.ndarray] = dict.fromkeys(factor_codebooks)  # type: ignore
