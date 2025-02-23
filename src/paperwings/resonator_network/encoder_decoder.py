@@ -199,9 +199,6 @@ class EncoderDecoder:
                     codebook_inds[factor_label] = np.random.randint(
                         0, factor_codebooks[factor_label].shape[1]
                     )
-            else:
-                # assert len(factor_codebooks) == len(codebook_inds)
-                pass
 
             factor_vecs = {}
             for label in codebook_inds:

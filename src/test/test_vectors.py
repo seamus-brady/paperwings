@@ -161,7 +161,7 @@ class TestVectors(unittest.TestCase):
 
         # open a vector space and read
         with open(vs_path, "rb") as f:
-            s2 = pickle.load(f) # nosec
+            s2 = pickle.load(f)  # nosec
 
         self.assertIsNotNone(s2)
         self.assertTrue("vec0" == s2.find_vector(vec_subtracted)[0])
