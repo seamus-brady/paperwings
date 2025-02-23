@@ -9,9 +9,9 @@
 
 
 #
-class ResNetException(Exception):
-    """Raise an exception when calling the ResonatorNetwork class"""
+class MemoryException(Exception):
+    """Raise an exception when calling a memory class"""
 
-    def __init__(self, message: str = "A resonator network error occurred!"):
+    def __init__(self, message: str = "A memory error occurred!"):
         self.message = message
         super().__init__(self.message)
