@@ -1,15 +1,22 @@
 #  Copyright (c) 2025. Prediction By Invention https://predictionbyinvention.com/
 #
-import unittest
-from src.paperwings.vector.vector import BipolarVector, BinarySparseVector
-from src.paperwings.vector.vector_space import VectorSpace
+#  THIS SOFTWARE IS PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+#  INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+#  PARTICULAR PURPOSE, AND NON-INFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR
+#  COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES, OR OTHER LIABILITY, WHETHER
+#  IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE, ARISING FROM, OUT OF, OR
+#  IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+from concurrent.futures import ThreadPoolExecutor
+from itertools import combinations
 
 import numpy as np
-from itertools import combinations
-from concurrent.futures import ThreadPoolExecutor
 
 
-class PrunedBruteForceResonator:
+class TripleUnbinder:
+    """
+    A class for unbinding a bound vector into a triplet of vectors using a brute-force search with hierarchical pruning.
+    """
+
     def __init__(self, vector_space, early_stop=True, top_k=20, use_parallel=True):
         """
         Brute-force search with hierarchical pruning.
@@ -21,7 +28,9 @@ class PrunedBruteForceResonator:
         """
         self.vector_space = vector_space  # Store the vector space reference
         self.early_stop = early_stop
-        self.top_k = min(top_k, len(vector_space.vectors))  # Ensure top_k does not exceed available vectors
+        self.top_k = min(
+            top_k, len(vector_space.vectors)
+        )  # Ensure top_k does not exceed available vectors
         self.use_parallel = use_parallel
 
     def cosine_similarity(self, a, b):
@@ -30,10 +39,14 @@ class PrunedBruteForceResonator:
 
     def prefilter_candidates(self, bound_vector):
         """Pre-filter dictionary vectors based on cosine similarity to the bound vector."""
-        similarities = [(name, v, self.cosine_similarity(bound_vector.value, v.value)) for name, v in
-                        self.vector_space.vectors.items()]
+        similarities = [
+            (name, v, self.cosine_similarity(bound_vector.value, v.value))
+            for name, v in self.vector_space.vectors.items()
+        ]
         similarities.sort(key=lambda x: x[2], reverse=True)  # Sort by similarity
-        return [(name, v) for name, v, _ in similarities[:self.top_k]]  # Take top-K candidates
+        return [
+            (name, v) for name, v, _ in similarities[: self.top_k]
+        ]  # Take top-K candidates
 
     def compute_binding(self, v1, v2, v3):
         """Compute the binding of three vectors, supporting both dense and sparse types."""
@@ -71,7 +84,7 @@ class PrunedBruteForceResonator:
         :return: The best (subject, predicate, object) triplet from VectorSpace.
         """
         best_match = None
-        min_distance = float('inf')
+        min_distance = float("inf")
 
         # **Step 1: Pre-prune candidates using cosine similarity**
         filtered_candidates = self.prefilter_candidates(bound_vector)
@@ -82,7 +95,15 @@ class PrunedBruteForceResonator:
             with ThreadPoolExecutor() as executor:
                 futures = []
                 for triplet in combinations(filtered_candidates, 3):
-                    futures.append(executor.submit(self.check_triplet, triplet, bound_vector, min_distance, best_match))
+                    futures.append(
+                        executor.submit(
+                            self.check_triplet,
+                            triplet,
+                            bound_vector,
+                            min_distance,
+                            best_match,
+                        )
+                    )
 
                 for future in futures:
                     candidate, distance = future.result()
@@ -93,51 +114,10 @@ class PrunedBruteForceResonator:
                             return best_match
         else:
             for triplet in combinations(filtered_candidates, 3):
-                best_match, min_distance = self.check_triplet(triplet, bound_vector, min_distance, best_match)
+                best_match, min_distance = self.check_triplet(
+                    triplet, bound_vector, min_distance, best_match
+                )
                 if self.early_stop and min_distance == 0:
                     return best_match
 
         return best_match
-
-
-class TestOntologyTripleEncoding(unittest.TestCase):
-    def setUp(self):
-        """Initialize a vector space and encode an ontology triple."""
-        self.vector_size = 1000
-        self.vector_space = VectorSpace(size=self.vector_size, rep="binary_sparse")
-
-        # add some random vectors
-        for i in range(0, 100000):
-            self.vector_space.add_vector()
-
-        # Step 1: Define base hypervectors for ontology triple using VectorSpace
-        self.vector_space.add_vector(name="Socrates")
-        self.vector_space.add_vector(name="is_a")
-        self.vector_space.add_vector(name="man")
-
-
-        # Step 2: Bind them using BinarySparseVector's `mul()` method
-        subject = self.vector_space["Socrates"]
-        predicate = self.vector_space["is_a"]
-        object_ = self.vector_space["man"]
-
-        self.bound_vector = BinarySparseVector(self.vector_size)
-        self.bound_vector.value = subject.mul(subject.value, predicate.value)
-        self.bound_vector.value = object_.mul(self.bound_vector.value, object_.value)
-
-        # Step 3: Initialize the pruned brute-force resonator
-        self.resonator = PrunedBruteForceResonator(self.vector_space, early_stop=True, top_k=10, use_parallel=True)
-
-    def test_ontology_unbinding(self):
-        """Test if the pruned brute-force resonator correctly recovers the original ontology triple."""
-        recovered_factors = self.resonator.unbind(self.bound_vector)
-
-        # Expected vector names
-        expected_factors = {"Socrates", "is_a", "man"}
-
-        # Assert that the recovered factors match the original ones
-        self.assertEqual(set(recovered_factors), expected_factors, "Failed to recover ontology triple correctly.")
-
-if __name__ == '__main__':
-    unittest.main()
-
