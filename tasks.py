@@ -1,4 +1,4 @@
-# Copyright 2023 seamus@ontal.ai, Corvideon Limited.
+# Copyright 2023 seamus@ocorvideon.ie
 #
 # The above copyright notice and this permission notice shall be included in
 # all copies or substantial portions of the Software.
