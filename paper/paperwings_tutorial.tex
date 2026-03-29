@@ -1,0 +1,481 @@
+\documentclass[11pt]{article}
+
+% --- Packages ---
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage[margin=1in]{geometry}
+\usepackage{natbib}
+\usepackage{graphicx}
+
+% --- Code listing style ---
+\definecolor{codebg}{HTML}{F5F5F5}
+\definecolor{codegreen}{HTML}{228B22}
+\definecolor{codegray}{HTML}{808080}
+\definecolor{codeblue}{HTML}{0000CD}
+
+\lstset{
+  language=Python,
+  basicstyle=\ttfamily\small,
+  backgroundcolor=\color{codebg},
+  keywordstyle=\color{codeblue},
+  commentstyle=\color{codegreen},
+  stringstyle=\color{codegray},
+  numbers=left,
+  numberstyle=\tiny\color{codegray},
+  numbersep=8pt,
+  frame=single,
+  breaklines=true,
+  showstringspaces=false,
+  tabsize=4,
+  captionpos=b,
+}
+
+% --- Title ---
+\title{\textbf{PaperWings: A Tutorial on Vector Symbolic Architectures\\for Associative Memory and Knowledge Representation}}
+
+\author{
+  Seamus Brady\\
+  Independent Researcher\\
+  Dublin, Ireland\\
+  \texttt{seamus@corvideon.ie}\\
+  \url{https://seamusbrady.ie}
+}
+
+\date{}
+
+\begin{document}
+
+\maketitle
+
+% ============================================================
+\begin{abstract}
+Vector Symbolic Architectures (VSAs), also known as Hyperdimensional Computing (HDC), offer a brain-inspired computational framework in which data is represented as high-dimensional random vectors and manipulated through simple algebraic operations. Despite growing interest, accessible and pedagogical implementations remain limited. We present \textit{PaperWings}, a lightweight Python library that implements three VSA vector types (binary, bipolar, and binary sparse), provides an associative memory with exponential decay, and introduces a triple-unbinding algorithm for knowledge graph recovery. This paper provides background on the VSA framework, walks through the library's design and API, and demonstrates its use in encoding semantic relationships, performing associative recall, and recovering knowledge graph triples.
+\end{abstract}
+
+\noindent\textbf{Keywords:} vector symbolic architectures, hyperdimensional computing, associative memory, knowledge representation, Python
+
+% ============================================================
+\section{Introduction}
+
+Representing structured knowledge in a way that supports robust, noise-tolerant retrieval is a long-standing challenge in artificial intelligence. Conventional symbolic systems offer compositionality but are brittle; neural networks offer robustness but struggle with explicit relational structure. Vector Symbolic Architectures (VSAs) occupy a middle ground: they encode symbols as high-dimensional random vectors and compose them via algebraic operations that preserve the ability to decompose and query the resulting representations \citep{gayler2003,kanerva2009}.
+
+Interest in VSAs has accelerated in recent years, driven by applications in classification \citep{rahimi2016,karunaratne2020}, language processing \citep{najafabadi2016}, robotics \citep{neubert2019}, and graph-structured data \citep{poduval2022,nunes2022}. However, the ecosystem of open-source VSA tools remains relatively small. The most prominent library, \textit{torchhd} \citep{heddes2023}, targets GPU-accelerated research workloads. There is a gap for a minimal, pedagogically oriented Python implementation that exposes the core ideas without heavy dependencies.
+
+\textit{PaperWings} fills this gap. It is a pure-Python (NumPy) library that implements the three most common VSA families, wraps them in an associative memory with biologically-motivated forgetting, and provides a triple-unbinding algorithm for knowledge graph recovery. This paper introduces the necessary background, describes the library architecture, and presents worked examples.
+
+Our contributions are: (1)~a minimal pedagogical implementation of core VSA operations, (2)~an associative memory with explicit exponential decay, and (3)~a practical triple-unbinding algorithm for recovering relational structure.
+
+% ============================================================
+\section{Background}
+
+\subsection{Foundations of Hyperdimensional Computing}
+
+The intellectual roots of VSAs lie in Kanerva's \textit{Sparse Distributed Memory} \citep{kanerva1988}, which modelled human long-term memory as a content-addressable store in a high-dimensional binary space. \citet{smolensky1990} showed that tensor products could encode variable bindings in connectionist networks, and \citet{plate1995} compressed these representations via circular convolution in his \textit{Holographic Reduced Representations} (HRR). \citet{kanerva1997} introduced the \textit{Binary Spatter Code} (BSC), using XOR for binding and majority rule for bundling, while \citet{rachkovskij2001} proposed \textit{context-dependent thinning} to bind sparse binary vectors without losing sparsity.
+
+\citet{gayler2003} unified these approaches under the term \textit{Vector Symbolic Architecture} and demonstrated their capacity for compositional linguistic structure. \citet{kanerva2009} provided an accessible tutorial that remains the standard entry point, and \citet{levy2008} argued for their relevance to artificial general intelligence.
+
+\subsection{The VSA Framework}
+
+All VSAs share three core operations on vectors of dimensionality $d$ (typically $d \geq 1000$):
+
+\begin{enumerate}
+    \item \textbf{Binding} ($\otimes$): Combines two vectors into a new vector that is dissimilar to both operands. Binding is used to represent associations (e.g., role--filler pairs).
+    \item \textbf{Bundling} ($\oplus$): Combines two or more vectors into a new vector that is \textit{similar} to all operands. Bundling creates superpositions---composite representations.
+    \item \textbf{Similarity} ($\delta$): Measures the distance or overlap between two vectors, enabling content-addressable retrieval.
+\end{enumerate}
+
+A critical property is that binding is designed to be invertible (exactly in some algebras, approximately in others): given $\mathbf{c} = \mathbf{a} \otimes \mathbf{b}$, one can recover $\mathbf{b} \approx \mathbf{a} \otimes \mathbf{c}$ (exactly for binary XOR; approximately for other algebras). This enables \textit{unbinding}---querying a composite for one of its constituents.
+
+\subsection{Common VSA Families}
+
+\begin{table}[h]
+\centering
+\caption{Common VSA families used in this work.}
+\label{tab:vsa_families}
+\begin{tabular}{@{}lllll@{}}
+\toprule
+\textbf{Family} & \textbf{Domain} & \textbf{Binding} & \textbf{Bundling} & \textbf{Similarity} \\
+\midrule
+BSC & $\{0,1\}$ & XOR & Majority vote & Norm.\ Hamming \\
+MAP & $\{-1,+1\}$ & Elem.\ multiply & Elem.\ add + sign & Norm.\ dot product \\
+SBDR & $\{0,1\}$, sparse & Permuted OR & Permuted OR & Jaccard distance \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The library implements these three families; HRR (real-valued, circular convolution) is omitted for simplicity.
+
+\subsection{Related Software}
+
+\textit{torchhd} \citep{heddes2023} provides a PyTorch-based library supporting BSC, MAP, HRR, and several other families with GPU acceleration. \textit{OpenHD} \citep{kang2022} targets GPU-accelerated classification workloads. The \textit{VSA Toolbox} \citep{schlegel2022} offers a MATLAB environment for comparative VSA research. The library presented here complements these by prioritising pedagogical clarity and minimal dependencies.
+
+\subsection{Memory Decay}
+
+\citet{ebbinghaus1885} established that human memory retention follows an approximately exponential decay curve. This phenomenon has motivated extensive work in continual learning, where neural networks must avoid \textit{catastrophic forgetting} when learning sequentially \citep{kirkpatrick2017,delange2022}. The library incorporates a simple exponential decay model into its vector memory, providing a mechanism for biologically-inspired forgetting that is uncommon in existing VSA libraries.
+
+\subsection{Knowledge Graphs and HDC}
+
+Encoding graph-structured knowledge in hyperdimensional space has attracted recent attention. \citet{poduval2022} introduced \textit{GrapHD} for graph memorisation with short- and long-term memory. \citet{nunes2022} demonstrated graph classification competitive with GNNs at a fraction of the computational cost. \citet{frady2021} analysed binding capacity for sparse distributed representations with applications to relational data. This work contributes a triple-unbinding algorithm that recovers (subject, predicate, object) triples from bound vectors by enumerating candidate combinations with hierarchical pruning.
+
+% ============================================================
+\section{Library Design}
+
+The library is organised into four modules:
+
+\begin{verbatim}
+paperwings/
++-- vector/
+|   +-- vector.py          # Vector types and operations
+|   +-- vector_space.py    # Associative memory
++-- unbinder/
+|   +-- triple_unbinder.py # Knowledge graph recovery
++-- exceptions/
+|   +-- memory_exception.py
++-- util/
+    +-- logging_util.py
+    +-- file_path_util.py
+\end{verbatim}
+
+\noindent The only external dependency is NumPy. Metadata is persisted in SQLite (standard library).
+
+\subsection{Vector Types}
+
+All vector types inherit from \texttt{AbstractVector}, which defines the interface for \texttt{add} (bundling), \texttt{mul} (binding), \texttt{sub} (subtraction), and \texttt{dist} (similarity), with operator overloads \texttt{+}, \texttt{*}, \texttt{-}. A factory method creates vectors of any type:
+
+\begin{lstlisting}
+from paperwings.vector.vector import AbstractVector
+
+v = AbstractVector.new_vector(size=1000, rep="binary")
+\end{lstlisting}
+
+\paragraph{BinaryVector (BSC).} Elements are drawn uniformly from $\{0, 1\}$.
+\begin{itemize}
+    \item \textit{Binding:} $\mathbf{z} = \text{XOR}(\mathbf{x}, \mathbf{y})$. Self-inverse: $\text{XOR}(\text{XOR}(\mathbf{a}, \mathbf{b}), \mathbf{a}) = \mathbf{b}$.
+    \item \textit{Bundling:} Element-wise sum followed by majority rule. For two vectors, ties ($x_i + y_i = 1$) are broken randomly; for more than two vectors, the majority value is selected.
+    \item \textit{Distance:} Normalised Hamming distance: $\delta(\mathbf{x}, \mathbf{y}) = \frac{1}{d}\sum_i \text{XOR}(x_i, y_i)$.
+\end{itemize}
+
+\paragraph{BipolarVector (MAP).} Elements are drawn uniformly from $\{-1, +1\}$.
+\begin{itemize}
+    \item \textit{Binding:} Element-wise multiplication. Self-inverse: $(\mathbf{a} \cdot \mathbf{b}) \cdot \mathbf{a} = \mathbf{b}$.
+    \item \textit{Bundling:} Element-wise addition followed by sign thresholding to $\{-1, +1\}$; ties randomised.
+    \item \textit{Distance:} $\delta(\mathbf{x}, \mathbf{y}) = \frac{d - \mathbf{x}^\top\mathbf{y}}{2d}$.
+\end{itemize}
+
+\paragraph{BinarySparseVector (SBDR).} Elements are drawn from $\{0, 1\}$ with sparsity $s = 0.2$.
+\begin{itemize}
+    \item \textit{Binding and Bundling:} Permuted OR with $k = 8$ random permutations, followed by AND with the initial OR. This preserves sparsity.
+    \item \textit{Distance:} Jaccard distance: $\delta(\mathbf{x}, \mathbf{y}) = 1 - \frac{\sum_i \text{AND}(x_i, y_i)}{\sum_i \text{OR}(x_i, y_i)}$.
+\end{itemize}
+
+\subsection{Vector Space (Associative Memory)}
+
+\texttt{VectorSpace} manages a named collection of vectors and provides content-addressable retrieval:
+
+\begin{lstlisting}
+from paperwings.vector.vector_space import VectorSpace
+
+space = VectorSpace(size=1000, rep="binary")
+country = space.add_vector("COUNTRY")
+usa     = space.add_vector("USA")
+dollar  = space.add_vector("DOLLAR")
+\end{lstlisting}
+
+Key methods:
+\begin{itemize}
+    \item \texttt{add\_vector(name)} --- create and store a new random vector.
+    \item \texttt{insert\_vector(v, name)} --- store a pre-existing vector.
+    \item \texttt{find\_vector(x)} --- return \texttt{(name, distance)} of the nearest stored vector.
+    \item \texttt{space["USA"]} --- retrieve a vector by name.
+    \item \texttt{delete\_vector(name)} --- remove a vector.
+\end{itemize}
+
+\subsection{Memory Decay}
+
+The library models forgetting with exponential decay inspired by the Ebbinghaus curve:
+\begin{equation}
+    \text{strength}(t) = \text{strength}_0 \cdot e^{-\lambda t}
+    \label{eq:decay}
+\end{equation}
+
+\noindent Each vector carries a \texttt{strength} attribute (initially 100). Calling \texttt{space.decay(decay\_rate=0.05, time\_passed=5)} updates all vectors; those whose strength falls below a configurable threshold (0.5 by default) are deleted. A typical trajectory is shown in Table~\ref{tab:decay}.
+
+\begin{table}[h]
+\centering
+\caption{Memory strength over repeated decay calls ($\lambda = 0.05$, $\Delta t = 5$).}
+\label{tab:decay}
+\begin{tabular}{@{}ccc@{}}
+\toprule
+\textbf{Decay calls} & \textbf{Effective $t$} & \textbf{Strength} \\
+\midrule
+0  & 0  & 100.0 \\
+1  & 5  & 77.9 \\
+2  & 10 & 60.7 \\
+5  & 25 & 28.7 \\
+10 & 50 & 8.2 \\
+$\sim$15 & $\sim$75 & $\approx 0.5$ (deleted) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Triple Unbinder}
+
+The \texttt{TripleUnbinder} recovers (subject, predicate, object) triples from a bound vector by enumerating candidate combinations. Given $\mathbf{b} = \mathbf{s} \otimes \mathbf{p} \otimes \mathbf{o}$:
+
+\begin{lstlisting}
+from paperwings.unbinder.triple_unbinder import TripleUnbinder
+
+unbinder = TripleUnbinder(space, early_stop=True, top_k=20)
+result = unbinder.unbind(bound_vector)
+# -> ("Socrates", "is_a", "man")
+\end{lstlisting}
+
+\paragraph{Algorithm.}
+\begin{enumerate}
+    \item \textit{Pre-filter:} Compute cosine similarity between $\mathbf{b}$ and every stored vector; retain the top-$k$ candidates.
+    \item \textit{Enumerate:} For each combination of three candidates $(\mathbf{v}_1, \mathbf{v}_2, \mathbf{v}_3)$, compute $\mathbf{v}_1 \otimes \mathbf{v}_2 \otimes \mathbf{v}_3$ and measure its Hamming distance to $\mathbf{b}$.
+    \item \textit{Select:} Return the triplet with minimum distance. If \texttt{early\_stop=True} and an exact match (distance $= 0$) is found, return immediately.
+    \item \textit{Parallelise (optional):} When $k > 20$, triplet evaluation may be distributed across threads via \texttt{ThreadPoolExecutor}.
+\end{enumerate}
+
+\noindent Cosine similarity is used for candidate pre-filtering, while Hamming distance is used for exact comparison. The current triple-unbinding implementation targets binary and binary-sparse representations, for which Hamming-style exact comparison is natural.
+
+\noindent Complexity is $O(nd + n \log n + k^3 d)$, where $n$ is the vocabulary size, $k$ is the candidate count, and $d$ is the dimensionality. For the default $k = 20$, this yields $\binom{20}{3} = 1{,}140$ triplet evaluations---tractable for interactive use.
+
+% ============================================================
+\section{Tutorial: Worked Examples}
+
+\subsection{Encoding Semantic Facts}
+
+We encode two facts: ``The USA uses the Dollar'' and ``Mexico uses the Peso.''
+
+\begin{lstlisting}[caption={Encoding semantic facts with role--filler binding.}]
+from paperwings.vector.vector_space import VectorSpace
+
+space = VectorSpace(size=1000, rep="binary")
+
+# Role vectors
+COUNTRY  = space.add_vector("COUNTRY")
+CURRENCY = space.add_vector("CURRENCY")
+
+# Filler vectors
+USA    = space.add_vector("USA")
+DOLLAR = space.add_vector("DOLLAR")
+MEXICO = space.add_vector("MEXICO")
+PESO   = space.add_vector("PESO")
+
+# Encode facts as role-filler bundles
+usa_record    = (COUNTRY * USA) + (CURRENCY * DOLLAR)
+mexico_record = (COUNTRY * MEXICO) + (CURRENCY * PESO)
+
+space.insert_vector(usa_record, "USA_RECORD")
+space.insert_vector(mexico_record, "MEXICO_RECORD")
+\end{lstlisting}
+
+\noindent\textbf{Querying.} To ask ``What currency does the USA use?'', we unbind the CURRENCY role from the USA record:
+
+\begin{lstlisting}[caption={Querying by unbinding.}]
+query = usa_record * CURRENCY  # unbind CURRENCY role
+name, dist = space.find_vector(query)
+print(name, dist)  # -> "DOLLAR", ~0.0
+\end{lstlisting}
+
+\subsection{Knowledge Graph Triples}
+
+We encode an ontological triple and recover it:
+
+\begin{lstlisting}[caption={Triple encoding and recovery.}]
+from paperwings.vector.vector_space import VectorSpace
+from paperwings.unbinder.triple_unbinder import TripleUnbinder
+
+space = VectorSpace(size=1000, rep="binary_sparse")
+
+socrates = space.add_vector("Socrates")
+is_a     = space.add_vector("is_a")
+man      = space.add_vector("man")
+mortal   = space.add_vector("mortal")
+
+# Encode triple: Socrates is_a man
+triple = socrates * is_a * man
+
+# Recover the triple
+unbinder = TripleUnbinder(space, early_stop=True, top_k=10)
+result = unbinder.unbind(triple)
+print(set(result))  # -> {"Socrates", "is_a", "man"}
+\end{lstlisting}
+
+\subsection{Memory Decay}
+
+We demonstrate how memories fade over simulated time:
+
+\begin{lstlisting}[caption={Exponential memory decay.}]
+space = VectorSpace(size=1000, rep="binary")
+v = space.add_vector("ephemeral")
+
+print(f"Initial strength: {space['ephemeral'].strength}")
+
+for i in range(1, 16):
+    space.decay(decay_rate=0.05, time_passed=5)
+    if "ephemeral" in space.vectors:
+        print(f"After {i} steps: "
+              f"{space['ephemeral'].strength:.1f}")
+    else:
+        print(f"After {i} steps: vector forgotten")
+        break
+\end{lstlisting}
+
+\subsection{Comparing Vector Types}
+
+The three representations offer different trade-offs:
+
+\begin{lstlisting}[caption={Binding and unbinding across vector types.}]
+for rep in ["binary", "bipolar", "binary_sparse"]:
+    s = VectorSpace(size=1000, rep=rep)
+    a = s.add_vector("a")
+    b = s.add_vector("b")
+
+    bound = a * b
+    recovered = bound * a  # unbind
+    name, dist = s.find_vector(recovered)
+    print(f"{rep:15s}  recovered={name}  "
+          f"distance={dist:.4f}")
+\end{lstlisting}
+
+\noindent Binary and bipolar vectors support exact self-inverse unbinding (distance $\approx 0$). Binary sparse vectors use a different binding mechanism and typically require the triple unbinder for reliable recovery.
+
+% ============================================================
+\section{Discussion}
+
+\paragraph{Strengths.} PaperWings provides a minimal, dependency-light implementation that makes VSA concepts tangible. The inclusion of memory decay and triple unbinding extends standard VSA implementations and connects to active research on continual learning and knowledge representation.
+
+\paragraph{Limitations.} The library is a research prototype. The linear-scan retrieval in \texttt{find\_vector} is $O(nd)$ and does not scale to large vocabularies; approximate nearest-neighbour indices would be needed. The triple unbinder's $O(k^3)$ enumeration is practical for small $k$ but does not generalise to higher-arity relations. GPU acceleration is not supported.
+
+\paragraph{Future directions.} Possible extensions include (1)~approximate nearest-neighbour retrieval (e.g., via locality-sensitive hashing, which is particularly natural in binary spaces), (2)~support for sequence encoding via permutation, (3)~integration with embedding models to initialise vectors from pre-trained representations, and (4)~benchmarking against \textit{torchhd} on standard HDC tasks.
+
+% ============================================================
+\section{Conclusion}
+
+This paper presents PaperWings, a pedagogical Python library for Vector Symbolic Architectures. By implementing three vector families, an associative memory with biologically-inspired decay, and a triple-unbinding algorithm for knowledge graph recovery, the library provides a self-contained environment for learning and experimenting with hyperdimensional computing. We hope it lowers the barrier to entry for researchers and students exploring this brain-inspired computational paradigm.
+
+% ============================================================
+\bibliographystyle{plainnat}
+
+\begin{thebibliography}{30}
+
+\bibitem[De~Lange et~al.(2022)]{delange2022}
+De~Lange, M., Aljundi, R., Masana, M., Parisot, S., Jia, X., Leonardis, A., Slabaugh, G., \& Tuytelaars, T. (2022).
+\newblock A continual learning survey: Defying forgetting in classification tasks.
+\newblock \textit{IEEE Transactions on Pattern Analysis and Machine Intelligence}, 44(7), 3366--3385.
+
+\bibitem[Ebbinghaus(1885)]{ebbinghaus1885}
+Ebbinghaus, H. (1885).
+\newblock \textit{{\"U}ber das Ged{\"a}chtnis: Untersuchungen zur experimentellen Psychologie}.
+\newblock Leipzig: Duncker \& Humblot.
+
+\bibitem[Frady et~al.(2021)]{frady2021}
+Frady, E.~P., Kleyko, D., \& Sommer, F.~T. (2021).
+\newblock Variable binding for sparse distributed representations: Theory and applications.
+\newblock \textit{IEEE Transactions on Neural Networks and Learning Systems}, 33(3), 1251--1262.
+
+\bibitem[Gayler(2003)]{gayler2003}
+Gayler, R.~W. (2003).
+\newblock Vector symbolic architectures answer {J}ackendoff's challenges for cognitive neuroscience.
+\newblock In \textit{Proceedings of the ICCS/ASCS Joint International Conference on Cognitive Science}, 133--138.
+
+\bibitem[Heddes et~al.(2023)]{heddes2023}
+Heddes, M., Nunes, I., Verg{\'e}s, P., Kleyko, D., Abraham, D., Givargis, T., Nicolau, A., \& Veidenbaum, A. (2023).
+\newblock Torchhd: An open source {P}ython library to support research on hyperdimensional computing and vector symbolic architectures.
+\newblock \textit{Journal of Machine Learning Research}, 24(255), 1--10.
+
+\bibitem[Kang et~al.(2022)]{kang2022}
+Kang, J., Khaleghi, B., Rosing, T., \& Kim, Y. (2022).
+\newblock {OpenHD}: A {GPU}-powered framework for hyperdimensional computing.
+\newblock \textit{IEEE Transactions on Computers}, 71(11), 2753--2764.
+
+\bibitem[Kanerva(1988)]{kanerva1988}
+Kanerva, P. (1988).
+\newblock \textit{Sparse Distributed Memory}.
+\newblock MIT Press.
+
+\bibitem[Kanerva(1997)]{kanerva1997}
+Kanerva, P. (1997).
+\newblock Fully distributed representation.
+\newblock In \textit{Proceedings of the Real World Computing Symposium (RWC'97)}, 358--365.
+
+\bibitem[Kanerva(2009)]{kanerva2009}
+Kanerva, P. (2009).
+\newblock Hyperdimensional computing: An introduction to computing in distributed representation with high-dimensional random vectors.
+\newblock \textit{Cognitive Computation}, 1(2), 139--159.
+
+\bibitem[Karunaratne et~al.(2020)]{karunaratne2020}
+Karunaratne, G., Le~Gallo, M., Cherubini, G., et~al. (2020).
+\newblock In-memory hyperdimensional computing.
+\newblock \textit{Nature Electronics}, 3, 327--337.
+
+\bibitem[Kirkpatrick et~al.(2017)]{kirkpatrick2017}
+Kirkpatrick, J., Pascanu, R., Rabinowitz, N., et~al. (2017).
+\newblock Overcoming catastrophic forgetting in neural networks.
+\newblock \textit{Proceedings of the National Academy of Sciences}, 114(13), 3521--3526.
+
+\bibitem[Levy \& Gayler(2008)]{levy2008}
+Levy, S.~D. \& Gayler, R.~W. (2008).
+\newblock Vector symbolic architectures: A new building material for artificial general intelligence.
+\newblock In \textit{Proceedings of the First Conference on Artificial General Intelligence (AGI 2008)}, IOS Press.
+
+\bibitem[Najafabadi et~al.(2016)]{najafabadi2016}
+Najafabadi, F.~R., Rahimi, A., Kanerva, P., \& Rabaey, J.~M. (2016).
+\newblock Hyperdimensional computing for text classification.
+\newblock In \textit{Proceedings of the Design, Automation \& Test in Europe Conference (DATE 2016)}.
+
+\bibitem[Neubert et~al.(2019)]{neubert2019}
+Neubert, P., Schubert, S., \& Protzel, P. (2019).
+\newblock An introduction to hyperdimensional computing for robotics.
+\newblock \textit{KI -- K{\"u}nstliche Intelligenz}, 33(4), 319--330.
+
+\bibitem[Nunes et~al.(2022)]{nunes2022}
+Nunes, I., Heddes, M., Givargis, T., Nicolau, A., \& Veidenbaum, A. (2022).
+\newblock {GraphHD}: Efficient graph classification using hyperdimensional computing.
+\newblock arXiv:2205.07826.
+
+\bibitem[Plate(1995)]{plate1995}
+Plate, T.~A. (1995).
+\newblock Holographic reduced representations.
+\newblock \textit{IEEE Transactions on Neural Networks}, 6(3), 623--641.
+
+\bibitem[Poduval et~al.(2022)]{poduval2022}
+Poduval, P., Alimohamadi, H., Zakeri, A., Imani, F., Najafi, M.~H., Givargis, T., \& Imani, M. (2022).
+\newblock {GrapHD}: Graph-based hyperdimensional memorization for brain-like cognitive learning.
+\newblock \textit{Frontiers in Neuroscience}, 16, 757125.
+
+\bibitem[Rachkovskij \& Kussul(2001)]{rachkovskij2001}
+Rachkovskij, D.~A. \& Kussul, E.~M. (2001).
+\newblock Binding and normalization of binary sparse distributed representations by context-dependent thinning.
+\newblock \textit{Neural Computation}, 13(2), 411--452.
+
+\bibitem[Rahimi et~al.(2016)]{rahimi2016}
+Rahimi, A., Kanerva, P., \& Rabaey, J.~M. (2016).
+\newblock A robust and energy-efficient classifier using brain-inspired hyperdimensional computing.
+\newblock In \textit{Proceedings of the International Symposium on Low Power Electronics and Design (ISLPED '16)}, ACM.
+
+\bibitem[Schlegel et~al.(2022)]{schlegel2022}
+Schlegel, K., Neubert, P., \& Protzel, P. (2022).
+\newblock A comparison of vector symbolic architectures.
+\newblock \textit{Artificial Intelligence Review}, 55, 4523--4555.
+
+\bibitem[Smolensky(1990)]{smolensky1990}
+Smolensky, P. (1990).
+\newblock Tensor product variable binding and the representation of symbolic structures in connectionist systems.
+\newblock \textit{Artificial Intelligence}, 46(1--2), 159--216.
+
+\bibitem[Thomas et~al.(2021)]{thomas2021}
+Thomas, A., Dasgupta, S., \& Rosing, T. (2021).
+\newblock A theoretical perspective on hyperdimensional computing.
+\newblock \textit{Journal of Artificial Intelligence Research}, 72, 215--249.
+
+\end{thebibliography}
+
+\end{document}
