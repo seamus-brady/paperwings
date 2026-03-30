@@ -16,7 +16,7 @@ Representing structured knowledge in a way that supports robust, noise-tolerant 
 
 Interest in VSAs has accelerated in recent years, driven by applications in classification (Rahimi et al., 2016; Karunaratne et al., 2020), language processing (Najafabadi et al., 2016), robotics (Neubert et al., 2019), and graph-structured data (Poduval et al., 2022; Nunes et al., 2022). However, the ecosystem of open-source VSA tools remains relatively small. The most prominent library, *torchhd* (Heddes et al., 2023), targets GPU-accelerated research workloads. There is a gap for a minimal, pedagogically oriented Python implementation that exposes the core ideas without heavy dependencies.
 
-*PaperWings* fills this gap. It is a pure-Python (NumPy) library that implements the three most common VSA families, wraps them in an associative memory with biologically-motivated forgetting, and provides a triple-unbinding algorithm for knowledge graph recovery. This paper introduces the necessary background, describes the library architecture, and presents worked examples.
+*PaperWings*<sup>[1](#fn1)</sup> fills this gap. It is a pure-Python (NumPy) library that implements the three most common VSA families, wraps them in an associative memory with biologically-motivated forgetting, and provides a triple-unbinding algorithm for knowledge graph recovery. This paper introduces the necessary background, describes the library architecture, and presents worked examples.
 
 Our contributions are: (1) a minimal pedagogical implementation of core VSA operations, (2) an associative memory with explicit exponential decay, and (3) a practical triple-unbinding algorithm for recovering relational structure.
 
@@ -336,4 +336,8 @@ Schlegel, K., Neubert, P., & Protzel, P. (2022). A comparison of vector symbolic
 
 Smolensky, P. (1990). Tensor product variable binding and the representation of symbolic structures in connectionist systems. *Artificial Intelligence*, 46(1–2), 159–216.
 
-Thomas, A., Dasgupta, S., & Rosing, T. (2021). A theoretical perspective on hyperdimensional computing. *Journal of Artificial Intelligence Research*, 72, 215–249.
+PaperWings (2025). PaperWings: A Python library for vector symbolic architectures. [https://github.com/seamus-brady/paperwings](https://github.com/seamus-brady/paperwings).
+
+---
+
+<a name="fn1">1</a>: [https://github.com/seamus-brady/paperwings](https://github.com/seamus-brady/paperwings)

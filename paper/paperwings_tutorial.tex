@@ -65,7 +65,7 @@ Representing structured knowledge in a way that supports robust, noise-tolerant 
 
 Interest in VSAs has accelerated in recent years, driven by applications in classification \citep{rahimi2016,karunaratne2020}, language processing \citep{najafabadi2016}, robotics \citep{neubert2019}, and graph-structured data \citep{poduval2022,nunes2022}. However, the ecosystem of open-source VSA tools remains relatively small. The most prominent library, \textit{torchhd} \citep{heddes2023}, targets GPU-accelerated research workloads. There is a gap for a minimal, pedagogically oriented Python implementation that exposes the core ideas without heavy dependencies.
 
-\textit{PaperWings} fills this gap. It is a pure-Python (NumPy) library that implements the three most common VSA families, wraps them in an associative memory with biologically-motivated forgetting, and provides a triple-unbinding algorithm for knowledge graph recovery. This paper introduces the necessary background, describes the library architecture, and presents worked examples.
+\textit{PaperWings}\footnote{\url{https://github.com/seamus-brady/paperwings}} fills this gap. It is a pure-Python (NumPy) library that implements the three most common VSA families, wraps them in an associative memory with biologically-motivated forgetting, and provides a triple-unbinding algorithm for knowledge graph recovery. This paper introduces the necessary background, describes the library architecture, and presents worked examples.
 
 Our contributions are: (1)~a minimal pedagogical implementation of core VSA operations, (2)~an associative memory with explicit exponential decay, and (3)~a practical triple-unbinding algorithm for recovering relational structure.
 
@@ -88,7 +88,7 @@ All VSAs share three core operations on vectors of dimensionality $d$ (typically
     \item \textbf{Similarity} ($\delta$): Measures the distance or overlap between two vectors, enabling content-addressable retrieval.
 \end{enumerate}
 
-A critical property is that binding is designed to be invertible (exactly in some algebras, approximately in others): given $\mathbf{c} = \mathbf{a} \otimes \mathbf{b}$, one can recover $\mathbf{b} \approx \mathbf{a} \otimes \mathbf{c}$ (exactly for binary XOR; approximately for other algebras). This enables \textit{unbinding}---querying a composite for one of its constituents.
+A critical property is that binding is designed to be invertible (exactly in some algebras, approximately in others): given $\mathbf{c} = \mathbf{a} \otimes \mathbf{b}$, one can recover $\mathbf{b} \approx \mathbf{a} \otimes \mathbf{c}$ (exactly for binary XOR and bipolar element-wise multiplication; approximately for other algebras). This enables \textit{unbinding}---querying a composite for one of its constituents.
 
 \subsection{Common VSA Families}
 
@@ -111,7 +111,7 @@ The library implements these three families; HRR (real-valued, circular convolut
 
 \subsection{Related Software}
 
-\textit{torchhd} \citep{heddes2023} provides a PyTorch-based library supporting BSC, MAP, HRR, and several other families with GPU acceleration. \textit{OpenHD} \citep{kang2022} targets GPU-accelerated classification workloads. The \textit{VSA Toolbox} \citep{schlegel2022} offers a MATLAB environment for comparative VSA research. The library presented here complements these by prioritising pedagogical clarity and minimal dependencies.
+\textit{torchhd} \citep{heddes2023} provides a PyTorch-based library supporting BSC, MAP, HRR, and several other families with GPU acceleration. \textit{OpenHD} \citep{kang2022} targets GPU-accelerated classification workloads. \citet{schlegel2022} provide a comprehensive comparative survey of VSA families, evaluating their properties and trade-offs across a range of tasks. The library presented here complements these by prioritising pedagogical clarity and minimal dependencies.
 
 \subsection{Memory Decay}
 
@@ -212,12 +212,12 @@ The library models forgetting with exponential decay inspired by the Ebbinghaus 
 \toprule
 \textbf{Decay calls} & \textbf{Effective $t$} & \textbf{Strength} \\
 \midrule
-0  & 0  & 100.0 \\
-1  & 5  & 77.9 \\
-2  & 10 & 60.7 \\
-5  & 25 & 28.7 \\
-10 & 50 & 8.2 \\
-$\sim$15 & $\sim$75 & $\approx 0.5$ (deleted) \\
+0  & 0   & 100.0 \\
+1  & 5   & 77.9 \\
+2  & 10  & 60.7 \\
+5  & 25  & 28.7 \\
+10 & 50  & 8.2 \\
+$\sim$22 & $\sim$110 & $\approx 0.5$ (deleted) \\
 \bottomrule
 \end{tabular}
 \end{table}
@@ -231,7 +231,7 @@ from paperwings.unbinder.triple_unbinder import TripleUnbinder
 
 unbinder = TripleUnbinder(space, early_stop=True, top_k=20)
 result = unbinder.unbind(bound_vector)
-# -> ("Socrates", "is_a", "man")
+# -> {"Socrates", "is_a", "man"}
 \end{lstlisting}
 
 \paragraph{Algorithm.}
@@ -471,10 +471,10 @@ Smolensky, P. (1990).
 \newblock Tensor product variable binding and the representation of symbolic structures in connectionist systems.
 \newblock \textit{Artificial Intelligence}, 46(1--2), 159--216.
 
-\bibitem[Thomas et~al.(2021)]{thomas2021}
-Thomas, A., Dasgupta, S., \& Rosing, T. (2021).
-\newblock A theoretical perspective on hyperdimensional computing.
-\newblock \textit{Journal of Artificial Intelligence Research}, 72, 215--249.
+\bibitem[{PaperWings}(2025)]{paperwings2025}
+{PaperWings} (2025).
+\newblock {PaperWings}: A Python library for vector symbolic architectures.
+\newblock \url{https://github.com/seamus-brady/paperwings}.
 
 \end{thebibliography}
 
